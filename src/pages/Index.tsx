@@ -1,8 +1,13 @@
 import { DollarSign, Users, ClipboardCheck, TrendingUp, AlertTriangle, ArrowRight, UserCheck, Loader2 } from "lucide-react";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { RiskRanking } from "@/components/dashboard/RiskRanking";
-import { RevenueChart } from "@/components/dashboard/RevenueChart";
+import { lazy, Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboard } from "@/hooks/useDashboard";
+
+// RevenueChart puxa o recharts (~350 KB): fica fora do chunk da Home e
+// carrega depois dos cards de métricas.
+const RevenueChart = lazy(() => import("@/components/dashboard/RevenueChart").then((m) => ({ default: m.RevenueChart })));
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 
@@ -40,7 +45,11 @@ export default function Dashboard() {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        <div className="lg:col-span-3"><RevenueChart /></div>
+        <div className="lg:col-span-3">
+          <Suspense fallback={<Skeleton className="h-80 w-full rounded-xl" />}>
+            <RevenueChart />
+          </Suspense>
+        </div>
         <div className="lg:col-span-2"><RiskRanking /></div>
       </div>
 

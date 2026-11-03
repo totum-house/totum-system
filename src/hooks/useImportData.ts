@@ -4,7 +4,9 @@ import { toast } from "@/hooks/use-toast";
 import { useTenant } from "@/contexts/TenantContext";
 import { attachOrganizationId } from "@/lib/tenant";
 import Papa from "papaparse";
-import ExcelJS from "exceljs";
+// Só o tipo: o exceljs (~900 KB) é importado dinamicamente na hora de ler um .xlsx,
+// para não entrar no chunk da tela de importação.
+import type ExcelJS from "exceljs";
 
 export interface SystemField {
   key: string;
@@ -150,6 +152,7 @@ export function useImportData() {
     } else {
       try {
         const buffer = await f.arrayBuffer();
+        const { default: ExcelJS } = await import("exceljs");
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.load(buffer);
         const worksheet = workbook.worksheets[0];
