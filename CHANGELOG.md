@@ -6,6 +6,8 @@
 ## [Unreleased]
 
 ### fix
+- Drift de schema B-039/B-043 (branch `chore/schema-drift-b039`): cinco patches aditivos em `supabase/patches/20261103_add_*.sql` (Asaas, contratos, itens de pacote, classificação financeira, itens de checklist — aplicar manualmente em `supa.grupototum.com`) e código adaptado onde o banco já tinha o equivalente: `asaasService` grava `asaas_id` e resolve o uuid de `asaas_customers` (`asaas_payment_id`/`asaas_subscription_id` viram colunas geradas, webhook intocado); `Packages`/`useContractFormData` usam `plans.price`/`billing_cycle`; `useAdminSettings` troca `organization_settings` (inexistente) por `company_settings` filtrado por `organization_id`; `checklistService`/`useContracts` enviam `title` em `delivery_checklists` e `delivery_checklist_items`; `FinancialFormDialog` tipado como `TablesInsert<"financial_entries">`; `types.ts` atualizado. `tsc --noEmit -p tsconfig.app.json` 90 → 33 erros; build e vitest (27) verdes
+- Cadastro/edição/importação de cliente (B-038): tabela `clients` em produção só tinha as colunas da baseline. Patch aditivo `supabase/patches/20261103_add_clients_briefing_columns.sql` cria as colunas do briefing (aplicar manualmente); `NewClient`/`EditClient`/`useImportData` passam a enviar também `name` (NOT NULL) e `document`, e `EditClient` cai para `name`/`document` ao carregar; `user_id` (coluna inexistente) removido do payload; `types.ts` atualizado
 - Corrigir erro `Could not find the 'additional_info' column of 'clients' in the schema cache` no cadastro/edição de cliente — coluna criada via `supabase/patches/20260804_add_clients_additional_info.sql` (o campo já era usado no formulário, mas nunca existiu no banco)
 - `TaskDetailDialog`: título e responsável da tarefa deixavam de ser persistidos ao salvar (payload de `updateTask` não incluía `title`/`responsible_id`) — corrigido em `src/pages/Tasks.tsx`
 - Aplicar hotfix RLS em produção para filhos de tarefas, checklists de entrega e objetos `task-attachments`, removendo policies permissivas de insert para usuários autenticados — `supabase/patches/20260513_remote_task_child_rls_hotfix.sql`
@@ -18,7 +20,19 @@
 - Cliente: botão "Desativar Cliente" (soft delete, `status = inativo`) e "Reativar Cliente" em `EditClient.tsx`; listagem de clientes ganha filtro "Mostrar Inativos" (oculto por padrão)
 - Aviso de alterações não salvas: novo hook `useUnsavedChangesGuard` + `UnsavedChangesDialog` reutilizados em `NewClient`, `EditClient`, `TaskFormDialog` e `TaskDetailDialog` — bloqueia fechamento acidental (Dialog/Sheet) e refresh/fechamento de aba (`beforeunload`) quando há dados não salvos
 
+### perf
+- Revisão de performance 2026-11-03 (`chore/revisao-20261103`, checklist das 31 correções):
+  - `index.html`: preconnect/dns-prefetch para `supa.grupototum.com` (apontava para o cloud aposentado)
+  - Home: `RevenueChart` (recharts) em `React.lazy` — JS estático da rota 399 KB → 11 KB além do shell
+  - Tarefas: Calendário, Dashboard, Metas e templates em `React.lazy`; loading com skeleton — 233 KB → 197 KB
+  - Importação: `exceljs` (914 KB) importado só ao ler `.xlsx`
+  - Busca global (Cmd+K): debounce de 300 ms antes do `ilike`
+  - `useSupabaseTasks`: tarefas e perfis em `Promise.all` (poupa 1 RTT ≈ 0,4 s)
+  - 18 dependências sem uso removidas (`package-lock` −580 linhas)
+  - B-041 — Tarefas: comentários e histórico saem da listagem e carregam por tarefa ao abrir o detalhe (`useTaskActivity`); drag no Kanban, mudança de status e exclusão atualizam só o estado local; edição recarrega 1 linha; conclusão só refaz a lista se criou tarefas novas. Comentário no diálogo passa a ser gravado em `task_comments`
+
 ### chore
+- Revisão 2026-11-03 (`chore/revisao-20261103`): remove diretivas `eslint-disable` sem efeito, `prefer-const` em `Products.tsx` e imports mortos em `NewClient`/`EditClient` — lint 498 → 495. Diagnóstico do cadastro de cliente quebrado registrado em `BUGS.md` B-038/B-039 (drift de schema; correção depende de decisão)
 - Untrack `src/stark-api/node_modules/` e `dist/` do git (2215 arquivos, ~65MB) — `948c250c`
 - Remover 23 arquivos duplicados `* 2.*` byte-identical (artefatos do Finder macOS) — `bd676aeb`
 

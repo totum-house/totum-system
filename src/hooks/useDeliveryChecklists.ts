@@ -4,7 +4,7 @@ import { toast } from "@/hooks/use-toast";
 import { useDemo } from "@/contexts/DemoContext";
 import { useTenant } from "@/contexts/TenantContext";
 import { demoDeliveryChecklists } from "@/data/demoData";
-import type { Tables, Enums } from "@/integrations/supabase/types";
+import type { Tables, TablesUpdate, Enums } from "@/integrations/supabase/types";
 
 export type ChecklistRow = Tables<"delivery_checklists"> & {
   clients?: { name: string } | null;
@@ -22,7 +22,6 @@ function useDebouncedCallback<T extends (...args: any[]) => any>(fn: T, delay = 
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => fn(...args), delay);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [fn, delay]
   );
 }
@@ -90,7 +89,7 @@ export function useDeliveryChecklists() {
   ) => {
     if (isDemoMode) { toast(DEMO_TOAST); return true; }
 
-    const updates: Record<string, unknown> = { status };
+    const updates: TablesUpdate<"delivery_checklist_items"> = { status };
     if (justification !== undefined) updates.justification = justification;
     if (status === "entregue") updates.completed_at = new Date().toISOString();
     else updates.completed_at = null;

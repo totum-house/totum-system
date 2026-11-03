@@ -4,7 +4,9 @@ import { toast } from "@/hooks/use-toast";
 import { useTenant } from "@/contexts/TenantContext";
 import { attachOrganizationId } from "@/lib/tenant";
 import Papa from "papaparse";
-import ExcelJS from "exceljs";
+// Só o tipo: o exceljs (~900 KB) é importado dinamicamente na hora de ler um .xlsx,
+// para não entrar no chunk da tela de importação.
+import type ExcelJS from "exceljs";
 
 export interface SystemField {
   key: string;
@@ -150,6 +152,7 @@ export function useImportData() {
     } else {
       try {
         const buffer = await f.arrayBuffer();
+        const { default: ExcelJS } = await import("exceljs");
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.load(buffer);
         const worksheet = workbook.worksheets[0];
@@ -269,6 +272,8 @@ export function useImportData() {
 
         if (toCreate.length > 0) {
           const payloads = toCreate.map(([, client]) => attachOrganizationId({
+            name: client.name,
+            document: client.document || null,
             company_name: client.name,
             contact_name: client.name,
             email: client.email || null,
@@ -293,6 +298,8 @@ export function useImportData() {
             for (const [key, client] of toCreate) {
               const { data: single, error } = await (supabase.from("clients") as any)
                 .insert(attachOrganizationId({
+                  name: client.name,
+                  document: client.document || null,
                   company_name: client.name,
                   contact_name: client.name,
                   email: client.email || null,

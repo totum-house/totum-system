@@ -14,7 +14,7 @@ import { QuickAddDialog } from "@/components/shared/QuickAddDialog";
 
 const formatCurrency = (value: string | number | null | undefined) => {
   if (value === null || value === undefined || value === "") return "";
-  let strValue = typeof value === 'number' ? value.toFixed(2) : String(value);
+  const strValue = typeof value === 'number' ? value.toFixed(2) : String(value);
   const numericValue = strValue.replace(/\D/g, "");
   if (!numericValue) return "";
   const floatValue = parseInt(numericValue, 10) / 100;

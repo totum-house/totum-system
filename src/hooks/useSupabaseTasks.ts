@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import type { Tables, Enums } from "@/integrations/supabase/types";
@@ -10,11 +10,70 @@ import { demoTasks } from "@/data/demoData";
 import { calculateNextDueDate } from "@/lib/recurrence";
 
 type TaskRow = Tables<"tasks">;
+type ProfileMap = Map<string, { name: string; avatar: string | null }>;
+
+// Comentários e histórico NÃO entram aqui: são carregados por tarefa, sob
+// demanda, em useTaskActivity quando o diálogo de detalhe abre (B-041).
+// Subtarefas e checklist ficam porque os cards do Kanban/Lista mostram progresso.
+const TASK_SELECT = `
+  *,
+  clients(name, responsible_id),
+  plans(name),
+  subtasks(*),
+  task_checklist_items(*)
+`;
+
+function mapTaskRow(t: any, profileMap: ProfileMap): Task {
+  return {
+    id: t.id,
+    title: t.title,
+    description: t.description || "",
+    clientId: t.client_id,
+    clientName: t.clients?.name || "—",
+    clientManagerId: t.clients?.responsible_id || undefined,
+    contractId: t.contract_id || undefined,
+    planName: t.plans?.name || undefined,
+    projectId: t.project_id || undefined,
+    responsible: t.responsible_id ? profileMap.get(t.responsible_id)?.name || undefined : undefined,
+    responsibleAvatarUrl: t.responsible_id ? profileMap.get(t.responsible_id)?.avatar || undefined : undefined,
+    responsibleId: t.responsible_id || undefined,
+    priority: t.priority as Enums<"task_priority">,
+    status: t.status as TaskStatus,
+    type: t.task_type as Enums<"task_type">,
+    startDate: t.start_date || undefined,
+    dueDate: t.due_date || undefined,
+    estimatedTime: t.estimated_minutes || undefined,
+    actualTime: t.actual_minutes || undefined,
+    isRecurring: t.is_recurring || false,
+    recurrenceType: t.recurrence_type as RecurrenceType | undefined,
+    recurrenceConfig: t.recurrence_config as RecurrenceConfig | undefined,
+    recurrenceEndDate: t.recurrence_end_date || undefined,
+    parentTaskId: t.parent_task_id || undefined,
+    lastGeneratedAt: t.last_generated_at || undefined,
+    subtasks: (t.subtasks || []).map((s: any) => ({
+      id: s.id,
+      title: s.title,
+      status: s.status as TaskStatus,
+      responsible: s.responsible_id ? profileMap.get(s.responsible_id)?.name : undefined,
+      dueDate: s.due_date || undefined,
+    })),
+    checklist: (t.task_checklist_items || []).map((c: any) => ({
+      id: c.id,
+      text: c.text,
+      completed: c.completed,
+    })),
+    comments: [],
+    history: [],
+  };
+}
 
 export function useSupabaseTasks() {
   const { isDemoMode } = useDemo();
   const { tenant, loading: tenantLoading } = useTenant();
   const [tasks, setTasks] = useState<Task[]>([]);
+  // Mapa user_id → nome/avatar do último fetch; reutilizado ao remapear uma
+  // única tarefa depois de uma atualização, sem refazer a listagem inteira.
+  const profileMapRef = useRef<ProfileMap>(new Map());
   const [loading, setLoading] = useState(true);
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
   const [profiles, setProfiles] = useState<{ user_id: string; full_name: string }[]>([]);
@@ -51,21 +110,6 @@ export function useSupabaseTasks() {
         return;
       }
 
-      const { data: taskRows, error } = await supabase
-        .from("tasks")
-        .select(`
-          *,
-          clients(name, responsible_id),
-          plans(name),
-          subtasks(*),
-          task_checklist_items(*),
-          task_comments(*),
-          task_history(*)
-        `)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-
       // Fetch profiles scoped to current tenant for name resolution
       // Explicit org filter is belt-and-suspenders over RLS (master user bypasses RLS)
       let profileQuery = supabase
@@ -74,66 +118,24 @@ export function useSupabaseTasks() {
       if (tenant?.organization_id) {
         profileQuery = profileQuery.eq("organization_id", tenant.organization_id);
       }
-      const { data: profileRows } = await profileQuery;
 
-      const profileMap = new Map<string, { name: string; avatar: string | null }>();
+      // Tarefas e perfis são independentes: disparar em paralelo poupa um RTT
+      // inteiro ao banco (≈0,4s por chamada em produção).
+      const [{ data: taskRows, error }, { data: profileRows }] = await Promise.all([
+        supabase
+          .from("tasks")
+          .select(TASK_SELECT)
+          .order("created_at", { ascending: false }),
+        profileQuery,
+      ]);
+
+      if (error) throw error;
+
+      const profileMap: ProfileMap = new Map();
       (profileRows || []).forEach((p: any) => profileMap.set(p.user_id, { name: p.full_name, avatar: p.avatar_url }));
+      profileMapRef.current = profileMap;
 
-      const mapped: Task[] = (taskRows || []).map((t: any) => ({
-        id: t.id,
-        title: t.title,
-        description: t.description || "",
-        clientId: t.client_id,
-        clientName: t.clients?.name || "—",
-        clientManagerId: t.clients?.responsible_id || undefined,
-        contractId: t.contract_id || undefined,
-        planName: t.plans?.name || undefined,
-        projectId: t.project_id || undefined,
-        responsible: t.responsible_id ? profileMap.get(t.responsible_id)?.name || undefined : undefined,
-        responsibleAvatarUrl: t.responsible_id ? profileMap.get(t.responsible_id)?.avatar || undefined : undefined,
-        responsibleId: t.responsible_id || undefined,
-        priority: t.priority as Enums<"task_priority">,
-        status: t.status as TaskStatus,
-        type: t.task_type as Enums<"task_type">,
-        startDate: t.start_date || undefined,
-        dueDate: t.due_date || undefined,
-        estimatedTime: t.estimated_minutes || undefined,
-        actualTime: t.actual_minutes || undefined,
-        isRecurring: t.is_recurring || false,
-        recurrenceType: t.recurrence_type as RecurrenceType | undefined,
-        recurrenceConfig: t.recurrence_config as RecurrenceConfig | undefined,
-        recurrenceEndDate: t.recurrence_end_date || undefined,
-        parentTaskId: t.parent_task_id || undefined,
-        lastGeneratedAt: t.last_generated_at || undefined,
-        subtasks: (t.subtasks || []).map((s: any) => ({
-          id: s.id,
-          title: s.title,
-          status: s.status as TaskStatus,
-          responsible: s.responsible_id ? profileMap.get(s.responsible_id)?.name : undefined,
-          dueDate: s.due_date || undefined,
-        })),
-        checklist: (t.task_checklist_items || []).map((c: any) => ({
-          id: c.id,
-          text: c.text,
-          completed: c.completed,
-        })),
-        comments: (t.task_comments || []).map((c: any) => ({
-          id: c.id,
-          author: profileMap.get(c.user_id)?.name || "Usuário",
-          authorAvatarUrl: profileMap.get(c.user_id)?.avatar || undefined,
-          text: c.content,
-          createdAt: c.created_at,
-        })),
-        history: (t.task_history || []).map((h: any) => ({
-          id: h.id,
-          action: h.action,
-          detail: h.detail || "",
-          user: h.user_id ? profileMap.get(h.user_id)?.name || "Sistema" : "Sistema",
-          createdAt: h.created_at,
-        })),
-      }));
-
-      setTasks(mapped);
+      setTasks((taskRows || []).map((t: any) => mapTaskRow(t, profileMap)));
     } catch (error) {
       console.error("Error fetching tasks:", error);
       setTasks([]);
@@ -214,6 +216,10 @@ export function useSupabaseTasks() {
       return;
     }
 
+    // Atualização local: o drag no Kanban não precisa refazer a listagem
+    // inteira (era o caminho mais caro do app — B-041).
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
+
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       await supabase.from("task_history").insert({
@@ -223,8 +229,23 @@ export function useSupabaseTasks() {
         user_id: user.id,
       });
     }
+  };
 
-    await fetchTasks();
+  // Recarrega UMA tarefa (com relações) e a substitui na lista — 1 linha em
+  // vez de todas. Se não vier (ex.: deletada), remove da lista.
+  const refreshTask = async (taskId: string) => {
+    const { data, error } = await supabase
+      .from("tasks")
+      .select(TASK_SELECT)
+      .eq("id", taskId)
+      .maybeSingle();
+    if (error) {
+      console.error("Error refreshing task:", error);
+      return;
+    }
+    setTasks(prev => data
+      ? prev.map(t => t.id === taskId ? mapTaskRow(data, profileMapRef.current) : t)
+      : prev.filter(t => t.id !== taskId));
   };
 
   const updateTask = async (taskId: string, updates: Partial<TaskRow>) => {
@@ -242,7 +263,7 @@ export function useSupabaseTasks() {
       return false;
     }
 
-    await fetchTasks();
+    await refreshTask(taskId);
     return true;
   };
 
@@ -306,7 +327,7 @@ export function useSupabaseTasks() {
     }
 
     toast({ title: "Tarefa excluída", description: "A tarefa foi removida permanentemente." });
-    await fetchTasks();
+    setTasks(prev => prev.filter(t => t.id !== taskId));
     return true;
   };
 
@@ -330,8 +351,12 @@ export function useSupabaseTasks() {
     const { data: { user } } = await supabase.auth.getUser();
     const userId = user?.id;
     const task = tasks.find((t) => t.id === data.taskId);
+    // Só refaz a listagem se a conclusão criou tarefas novas (próxima ação ou
+    // recorrência); o status em si é atualizado localmente.
+    let createdNewTasks = false;
 
     if (data.decision === "next_action" && data.nextAction && task) {
+      createdNewTasks = true;
       await supabase.from("subtasks").insert({
         task_id: data.taskId,
         title: data.nextAction.title,
@@ -388,6 +413,7 @@ export function useSupabaseTasks() {
       );
       const isEnded = task.recurrenceEndDate && new Date(nextDueDate) > new Date(task.recurrenceEndDate);
       if (!isEnded) {
+        createdNewTasks = true;
         await supabase.from("tasks").insert(attachOrganizationId({
           title: task.title,
           description: task.description,
@@ -408,6 +434,7 @@ export function useSupabaseTasks() {
     }
 
     await updateTaskStatus(data.taskId, "concluido");
+    if (createdNewTasks) await fetchTasks();
     return true;
   };
 

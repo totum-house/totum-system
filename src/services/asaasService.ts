@@ -209,6 +209,21 @@ export async function testAsaasConnection(apiKey: string, environment: "producti
 
 // ─── CLIENTES ─────────────────────────────────────────────────────────────────
 
+/**
+ * Linha de asaas_customers pelo id do cliente no Asaas (coluna asaas_id).
+ * asaas_payments/asaas_subscriptions.asaas_customer_id é uuid → asaas_customers.id,
+ * então quem insere cobrança/assinatura resolve o uuid aqui em vez de gravar o
+ * id textual do Asaas (B-039).
+ */
+async function findAsaasCustomerRow(asaasCustomerId: string) {
+  const { data } = await supabase
+    .from("asaas_customers")
+    .select("id, client_id, organization_id")
+    .eq("asaas_id", asaasCustomerId)
+    .maybeSingle();
+  return data;
+}
+
 export async function syncClientToAsaas(
   clientId: string,
   apiKey: string,
@@ -224,9 +239,9 @@ export async function syncClientToAsaas(
 
   const { data: existing } = await supabase
     .from("asaas_customers")
-    .select("asaas_customer_id")
+    .select("asaas_id")
     .eq("client_id", clientId)
-    .single();
+    .maybeSingle();
 
   const customerPayload: Partial<AsaasCustomer> = {
     name: client.name,
@@ -237,22 +252,31 @@ export async function syncClientToAsaas(
     observations: client.notes || undefined,
   };
 
-  if (existing?.asaas_customer_id) {
-    await asaasRequest("PUT", `/customers/${existing.asaas_customer_id}`, apiKey, customerPayload, environment);
+  const customerRow = {
+    name: client.name,
+    email: client.email || null,
+    cpf_cnpj: client.document?.replace(/\D/g, "") || null,
+    organization_id: client.organization_id ?? null,
+  };
+
+  if (existing?.asaas_id) {
+    await asaasRequest("PUT", `/customers/${existing.asaas_id}`, apiKey, customerPayload, environment);
     await supabase.from("asaas_customers").update({
+      ...customerRow,
       synced_at: new Date().toISOString(),
       sync_status: "synced",
       error_message: null,
-    } as any).eq("client_id", clientId);
-    return { asaasId: existing.asaas_customer_id, created: false };
+    }).eq("client_id", clientId);
+    return { asaasId: existing.asaas_id, created: false };
   } else {
     const created = await asaasRequest("POST", "/customers", apiKey, customerPayload, environment);
     await supabase.from("asaas_customers").insert({
+      ...customerRow,
       client_id: clientId,
-      asaas_customer_id: created.id,
+      asaas_id: created.id,
       sync_status: "synced",
       synced_at: new Date().toISOString(),
-    } as any);
+    });
     return { asaasId: created.id, created: true };
   }
 }
@@ -262,7 +286,7 @@ export async function syncAllClientsToAsaas(apiKey: string, environment: "produc
 
   const { data: clients } = await supabase
     .from("clients")
-    .select("id, name, email, phone, document, notes")
+    .select("id, name, email, phone, document, notes, organization_id")
     .eq("status", "ativo");
 
   if (!clients?.length) return result;
@@ -276,10 +300,12 @@ export async function syncAllClientsToAsaas(apiKey: string, environment: "produc
       result.errors.push(`${client.name}: ${e.message}`);
       await supabase.from("asaas_customers").upsert({
         client_id: client.id,
-        asaas_customer_id: `error_${client.id}`,
+        asaas_id: `error_${client.id}`,
+        name: client.name,
+        organization_id: client.organization_id ?? null,
         sync_status: "error",
         error_message: e.message,
-      } as any, { onConflict: "client_id" });
+      }, { onConflict: "client_id" });
     }
   }
 
@@ -297,13 +323,15 @@ export async function createAsaasPayment(
   environment: "production" | "sandbox" = "production"
 ): Promise<AsaasPayment> {
   const payment = await asaasRequest("POST", "/payments", apiKey, input, environment);
+  const customer = await findAsaasCustomerRow(input.customer);
 
-  // Salvar no banco
+  // Salvar no banco (asaas_payment_id é coluna gerada a partir de asaas_id)
   await supabase.from("asaas_payments").insert({
-    asaas_payment_id: payment.id,
-    asaas_customer_id: input.customer,
-    client_id: clientId || null,
+    asaas_id: payment.id,
+    asaas_customer_id: customer?.id ?? null,
+    client_id: clientId || customer?.client_id || null,
     contract_id: contractId || null,
+    organization_id: customer?.organization_id ?? null,
     value: payment.value,
     net_value: payment.netValue,
     billing_type: payment.billingType,
@@ -374,21 +402,18 @@ export async function syncPaymentsFromAsaas(apiKey: string, environment: "produc
       );
 
       for (const payment of data.data || []) {
-        const { data: mapping } = await supabase
-          .from("asaas_customers")
-          .select("client_id")
-          .eq("asaas_customer_id", payment.customer)
-          .single();
+        const mapping = await findAsaasCustomerRow(payment.customer);
 
         const { data: existing } = await supabase
           .from("asaas_payments")
           .select("id")
           .eq("asaas_payment_id", payment.id)
-          .single();
+          .maybeSingle();
 
         const paymentData = {
-          asaas_customer_id: payment.customer,
+          asaas_customer_id: mapping?.id ?? null,
           client_id: mapping?.client_id || null,
+          organization_id: mapping?.organization_id ?? null,
           value: payment.value,
           net_value: payment.netValue,
           billing_type: payment.billingType,
@@ -409,7 +434,7 @@ export async function syncPaymentsFromAsaas(apiKey: string, environment: "produc
           result.updated++;
         } else {
           await supabase.from("asaas_payments").insert({
-            asaas_payment_id: payment.id,
+            asaas_id: payment.id,
             ...paymentData,
           } as any);
           result.created++;
@@ -437,12 +462,15 @@ export async function createAsaasSubscription(
   environment: "production" | "sandbox" = "production"
 ): Promise<AsaasSubscription> {
   const subscription = await asaasRequest("POST", "/subscriptions", apiKey, input, environment);
+  const customer = await findAsaasCustomerRow(input.customer);
 
+  // asaas_subscription_id é coluna gerada a partir de asaas_id
   await supabase.from("asaas_subscriptions").insert({
-    asaas_subscription_id: subscription.id,
-    asaas_customer_id: input.customer,
-    client_id: clientId || null,
+    asaas_id: subscription.id,
+    asaas_customer_id: customer?.id ?? null,
+    client_id: clientId || customer?.client_id || null,
     contract_id: contractId || null,
+    organization_id: customer?.organization_id ?? null,
     billing_type: subscription.billingType,
     value: subscription.value,
     cycle: subscription.cycle,

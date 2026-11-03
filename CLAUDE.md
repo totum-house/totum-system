@@ -58,7 +58,7 @@ Toda alteração nestas áreas exige aprovação ANTES de qualquer commit:
 | Check | Status | Detalhe |
 |---|---|---|
 | Build (`npm run build`) | ✅ | ~10s. Code splitting por rota ativo |
-| TypeScript (`tsc --noEmit`) | ✅ | Passa (strict: false) |
+| TypeScript (`tsc --noEmit`) | ⚠️ | 90 erros (2026-11-03) — quase todos drift entre código e schema do banco self-hosted (B-039) |
 | Lint (`npm run lint`) | ⚠️ | ~2035 problemas — maioria `no-explicit-any` |
 | npm audit | ⚠️ | 1 HIGH: `xlsx` Prototype Pollution (sem fix upstream) |
 | .env no .gitignore | ✅ | Protegido |

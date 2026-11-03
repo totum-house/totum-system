@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { useTaskActivity } from "@/hooks/useTaskActivity";
 import { UnsavedChangesDialog } from "@/components/shared";
 
 interface TaskDetailDialogProps {
@@ -90,6 +91,9 @@ export function TaskDetailDialog({ task, open, onOpenChange, onUpdate, onDelete,
     }
   }, [activeTab]);
   const [newComment, setNewComment] = useState("");
+  // Comentários e histórico carregam só quando o diálogo abre (B-041); em demo
+  // usa o que vem embutido na tarefa.
+  const activity = useTaskActivity(task?.id, open, task ? { comments: task.comments, history: task.history } : undefined);
   const [newCheckItem, setNewCheckItem] = useState("");
   const [newSubtask, setNewSubtask] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -200,17 +204,10 @@ export function TaskDetailDialog({ task, open, onOpenChange, onUpdate, onDelete,
     update({ subtasks: task.subtasks.filter((s) => s.id !== id) });
   };
 
-  const addComment = () => {
+  const addComment = async () => {
     if (!newComment.trim()) return;
-    update({
-      comments: [...task.comments, {
-        id: crypto.randomUUID(),
-        author: "Você",
-        text: newComment,
-        createdAt: new Date().toISOString(),
-      }],
-    });
-    setNewComment("");
+    const ok = await activity.addComment(newComment);
+    if (ok) setNewComment("");
   };
 
   const toggleWeekDay = (day: number) => {
@@ -231,8 +228,8 @@ export function TaskDetailDialog({ task, open, onOpenChange, onUpdate, onDelete,
     { key: "details", label: "Detalhes", icon: FileText },
     { key: "subtasks", label: `Subtarefas (${task.subtasks.length})`, icon: ListTree },
     { key: "recurrence", label: "Recorrência", icon: RefreshCw },
-    { key: "comments", label: `Comentários (${task.comments.length})`, icon: MessageSquare },
-    { key: "history", label: `Histórico (${task.history.length})`, icon: History },
+    { key: "comments", label: `Comentários (${activity.comments.length})`, icon: MessageSquare },
+    { key: "history", label: `Histórico (${activity.history.length})`, icon: History },
   ] as const;
 
   return (
@@ -691,10 +688,13 @@ export function TaskDetailDialog({ task, open, onOpenChange, onUpdate, onDelete,
         {/* Comments Tab */}
         {activeTab === "comments" && (
           <div className="mt-3 space-y-3">
-            {task.comments.length === 0 && (
+            {activity.loading && activity.comments.length === 0 && (
+              <p className="text-xs text-muted-foreground/50 text-center py-8">Carregando comentários…</p>
+            )}
+            {!activity.loading && activity.comments.length === 0 && (
               <p className="text-xs text-muted-foreground/50 text-center py-8">Nenhum comentário ainda</p>
             )}
-            {task.comments.map((comment) => (
+            {activity.comments.map((comment) => (
               <div key={comment.id} className="p-3 rounded-lg bg-white/[0.03]">
                 <div className="flex items-center gap-2 mb-1.5">
                   <Avatar className="h-5 w-5">
@@ -727,10 +727,13 @@ export function TaskDetailDialog({ task, open, onOpenChange, onUpdate, onDelete,
         {/* History Tab */}
         {activeTab === "history" && (
           <div className="mt-3 space-y-2">
-            {task.history.length === 0 && (
+            {activity.loading && activity.history.length === 0 && (
+              <p className="text-xs text-muted-foreground/50 text-center py-8">Carregando histórico…</p>
+            )}
+            {!activity.loading && activity.history.length === 0 && (
               <p className="text-xs text-muted-foreground/50 text-center py-8">Nenhum registro no histórico</p>
             )}
-            {task.history.map((entry) => (
+            {activity.history.map((entry) => (
               <div key={entry.id} className="flex items-start gap-3 py-2 px-2">
                 <div className="h-1.5 w-1.5 rounded-full bg-white/20 mt-1.5 shrink-0" />
                 <div>

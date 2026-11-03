@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, lazy, Suspense } from "react";
 import { motion } from "framer-motion";
 import { LayoutGrid, List, CalendarDays, Sparkles, BarChart3, Loader2, Plus, Archive, RotateCcw, LayoutTemplate, Target, Search, ArrowUpDown, X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,8 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TaskFilters } from "@/components/tasks/TaskFilters";
 import { TaskKanban } from "@/components/tasks/TaskKanban";
 import { TaskListView } from "@/components/tasks/TaskListView";
-import { TaskCalendar } from "@/components/tasks/TaskCalendar";
-import { TaskDashboard } from "@/components/tasks/TaskDashboard";
 import { TaskDetailDialog } from "@/components/tasks/TaskDetailDialog";
 import { GenerateTasksDialog } from "@/components/tasks/GenerateTasksDialog";
 import { TaskCompletionDialog } from "@/components/tasks/TaskCompletionDialog";
@@ -16,10 +14,16 @@ import { TaskFormDialog } from "@/components/tasks/TaskFormDialog";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { calculateNextDueDate } from "@/lib/recurrence";
 import { Task, TaskStatus, initialTasks, statusConfig, statusColumns } from "@/components/tasks/taskData";
-import { TaskTemplateManager } from "@/components/templates/TaskTemplateManager";
-import { TaskGoals } from "@/components/tasks/TaskGoals";
-import { ProjectTemplateManager } from "@/components/templates/ProjectTemplateManager";
 import { Confetti } from "@/components/tasks/Confetti";
+import { LoadingState } from "@/components/shared/LoadingState";
+
+// Views secundárias saem do chunk principal de /tarefas: o Kanban (padrão) e a
+// Lista carregam primeiro; Calendário, Dashboard, Metas e Templates só quando abertos.
+const TaskCalendar = lazy(() => import("@/components/tasks/TaskCalendar").then((m) => ({ default: m.TaskCalendar })));
+const TaskDashboard = lazy(() => import("@/components/tasks/TaskDashboard").then((m) => ({ default: m.TaskDashboard })));
+const TaskGoals = lazy(() => import("@/components/tasks/TaskGoals").then((m) => ({ default: m.TaskGoals })));
+const TaskTemplateManager = lazy(() => import("@/components/templates/TaskTemplateManager").then((m) => ({ default: m.TaskTemplateManager })));
+const ProjectTemplateManager = lazy(() => import("@/components/templates/ProjectTemplateManager").then((m) => ({ default: m.ProjectTemplateManager })));
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSupabaseTasks } from "@/hooks/useSupabaseTasks";
 import { toast } from "@/hooks/use-toast";
@@ -428,9 +432,7 @@ export default function Tasks() {
 
       {/* Content */}
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        </div>
+        <LoadingState variant="page" className="p-0" />
       ) : (
         <motion.div
           key={view}
@@ -438,6 +440,7 @@ export default function Tasks() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2 }}
         >
+          <Suspense fallback={<LoadingState variant="page" className="p-0" />}>
           {view === "dashboard" && !showArchived && <TaskDashboard tasks={activeTasks} />}
           {view === "kanban" && !showArchived && (
             <>
@@ -534,6 +537,7 @@ export default function Tasks() {
               </Tabs>
             </div>
           )}
+          </Suspense>
         </motion.div>
       )}
 

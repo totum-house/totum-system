@@ -18,7 +18,7 @@ import {
   Building2, Briefcase, Target, Palette, Settings2,
   ChevronLeft, ChevronRight, Check, Loader2, User, FileClock,
 } from "lucide-react";
-import { validateClientBasicInfo, isValidEmail, isValidPhone, isValidURL, sanitizeURL, type ValidationErrors } from "@/lib/validation";
+import { validateClientBasicInfo, sanitizeURL, type ValidationErrors } from "@/lib/validation";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -215,8 +215,10 @@ export default function NewClient() {
     const sanitizedWebsite = form.website ? sanitizeURL(form.website) : null;
 
     setSaving(true);
+    // name/document são as colunas da baseline (name é NOT NULL); company_name/cnpj
+    // são as colunas do briefing — gravamos nas duas para a listagem e o edit lerem igual.
     const ok = await addClient({
-      user_id: user.id,
+      name: form.company_name, document: form.cnpj,
       company_name: form.company_name, cnpj: form.cnpj, contact_name: form.contact_name, email: form.email, phone: form.phone, website: sanitizedWebsite,
       industry: form.industry || null, business_description: form.business_description || null, products_services: form.products_services || null, time_in_market: form.time_in_market || null, company_size: form.company_size || null, monthly_revenue: form.monthly_revenue || null,
       main_niche: form.main_niche || null, main_pains: form.main_pains || null, desires: form.desires || null, age_min: form.age_min, age_max: form.age_max, gender: form.gender as any, location: form.location || null, social_class: form.social_class || null, brand_tone: form.brand_tone || null,
