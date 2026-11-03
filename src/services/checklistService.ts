@@ -48,6 +48,7 @@ export async function generateChecklistForClient(clientId: string, period: strin
         client_id: clientId,
         contract_id: contract.id,
         plan_id: contract.plan_id,
+        title: period,
         period: period,
         frequency: contract.billing_frequency || "mensal",
         fulfillment_pct: 0,
@@ -72,7 +73,7 @@ export async function generateChecklistForClient(clientId: string, period: strin
       const itemsToInsert = modelItems.map(item => ({
         checklist_id: checklist.id,
         delivery_model_item_id: item.id,
-        name: item.name,
+        title: item.name,
         // status: null → valid (enum has no "pendente"; NULL = not yet assessed)
         sort_order: item.sort_order ?? 0,
         responsible_id: item.suggested_responsible_id ?? null,
@@ -80,7 +81,7 @@ export async function generateChecklistForClient(clientId: string, period: strin
 
       const { error: itemsErr } = await supabase
         .from("delivery_checklist_items")
-        .insert(itemsToInsert as any[]);
+        .insert(itemsToInsert);
 
       if (itemsErr) throw itemsErr;
 
