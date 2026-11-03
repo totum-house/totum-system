@@ -19,6 +19,16 @@
 - Cliente: botão "Desativar Cliente" (soft delete, `status = inativo`) e "Reativar Cliente" em `EditClient.tsx`; listagem de clientes ganha filtro "Mostrar Inativos" (oculto por padrão)
 - Aviso de alterações não salvas: novo hook `useUnsavedChangesGuard` + `UnsavedChangesDialog` reutilizados em `NewClient`, `EditClient`, `TaskFormDialog` e `TaskDetailDialog` — bloqueia fechamento acidental (Dialog/Sheet) e refresh/fechamento de aba (`beforeunload`) quando há dados não salvos
 
+### perf
+- Revisão de performance 2026-11-03 (`chore/revisao-20261103`, checklist das 31 correções):
+  - `index.html`: preconnect/dns-prefetch para `supa.grupototum.com` (apontava para o cloud aposentado)
+  - Home: `RevenueChart` (recharts) em `React.lazy` — JS estático da rota 399 KB → 11 KB além do shell
+  - Tarefas: Calendário, Dashboard, Metas e templates em `React.lazy`; loading com skeleton — 233 KB → 197 KB
+  - Importação: `exceljs` (914 KB) importado só ao ler `.xlsx`
+  - Busca global (Cmd+K): debounce de 300 ms antes do `ilike`
+  - `useSupabaseTasks`: tarefas e perfis em `Promise.all` (poupa 1 RTT ≈ 0,4 s)
+  - 18 dependências sem uso removidas (`package-lock` −580 linhas)
+
 ### chore
 - Revisão 2026-11-03 (`chore/revisao-20261103`): remove diretivas `eslint-disable` sem efeito, `prefer-const` em `Products.tsx` e imports mortos em `NewClient`/`EditClient` — lint 498 → 495. Diagnóstico do cadastro de cliente quebrado registrado em `BUGS.md` B-038/B-039 (drift de schema; correção depende de decisão)
 - Untrack `src/stark-api/node_modules/` e `dist/` do git (2215 arquivos, ~65MB) — `948c250c`
