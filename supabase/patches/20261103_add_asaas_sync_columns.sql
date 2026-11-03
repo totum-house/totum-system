@@ -21,7 +21,7 @@
 --     resolve o uuid pelo asaas_id antes de inserir.
 --
 -- Puramente aditivo (colunas nullable/geradas; FKs ON DELETE SET NULL; índice único
--- parcial em asaas_customers.client_id, exigido pelo upsert onConflict do front):
+-- em asaas_customers.client_id, exigido pelo upsert onConflict do front):
 -- reversível com DROP COLUMN / DROP INDEX. Se o índice único falhar por client_id
 -- duplicado, limpar as duplicatas antes — hoje a tabela está vazia.
 --
@@ -42,9 +42,11 @@ ALTER TABLE totum_system.asaas_customers
   ADD COLUMN IF NOT EXISTS synced_at timestamp with time zone,
   ADD COLUMN IF NOT EXISTS error_message text;
 
+-- Sem predicado WHERE de propósito: o upsert do front vira `ON CONFLICT (client_id)`
+-- no PostgREST, que só infere índices únicos completos. NULLs continuam permitidos
+-- (unique trata NULL como distinto).
 CREATE UNIQUE INDEX IF NOT EXISTS asaas_customers_client_id_key
-  ON totum_system.asaas_customers (client_id)
-  WHERE client_id IS NOT NULL;
+  ON totum_system.asaas_customers (client_id);
 
 -- asaas_payments
 ALTER TABLE totum_system.asaas_payments
