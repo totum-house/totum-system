@@ -31,13 +31,12 @@ export default defineConfig(() => {
               // Radix sai em chunk próprio: o Rollup emite `import` de vendor-ui
               // para vendor-react, e o carregamento ESM garante que React já
               // esteja avaliado quando os createContext do Radix rodarem.
-              // cmdk/vaul embrulham primitivas do Radix: se ficassem no
-              // vendor-react criariam um ciclo vendor-react <-> vendor-ui, e em
-              // ciclo a ordem de avaliação ESM deixa de ser garantida (TDZ).
+              // cmdk embrulha primitivas do Radix: se ficasse no vendor-react
+              // criaria um ciclo vendor-react <-> vendor-ui, e em ciclo a ordem
+              // de avaliação ESM deixa de ser garantida (TDZ).
               if (
                 id.includes("@radix-ui") ||
-                id.includes("cmdk") ||
-                id.includes("vaul")
+                id.includes("cmdk")
               ) return "vendor-ui";
               // React e tudo que depende diretamente de React vai junto para evitar
               // que createContext seja chamado antes do React estar disponível.
@@ -46,12 +45,7 @@ export default defineConfig(() => {
                 id.includes("react-router-dom") ||
                 id.includes("react/") ||
                 /[/\\]react[/\\]/.test(id) ||
-                id.includes("react-resizable-panels") ||
-                id.includes("embla-carousel-react") ||
                 id.includes("react-dropzone") ||
-                id.includes("react-hook-form") ||
-                id.includes("@hookform") ||
-                id.includes("input-otp") ||
                 id.includes("next-themes") ||
                 id.includes("sonner") ||
                 id.includes("framer-motion")
