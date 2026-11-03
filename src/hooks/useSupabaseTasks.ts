@@ -51,21 +51,6 @@ export function useSupabaseTasks() {
         return;
       }
 
-      const { data: taskRows, error } = await supabase
-        .from("tasks")
-        .select(`
-          *,
-          clients(name, responsible_id),
-          plans(name),
-          subtasks(*),
-          task_checklist_items(*),
-          task_comments(*),
-          task_history(*)
-        `)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-
       // Fetch profiles scoped to current tenant for name resolution
       // Explicit org filter is belt-and-suspenders over RLS (master user bypasses RLS)
       let profileQuery = supabase
@@ -74,7 +59,26 @@ export function useSupabaseTasks() {
       if (tenant?.organization_id) {
         profileQuery = profileQuery.eq("organization_id", tenant.organization_id);
       }
-      const { data: profileRows } = await profileQuery;
+
+      // Tarefas e perfis são independentes: disparar em paralelo poupa um RTT
+      // inteiro ao banco (≈0,4s por chamada em produção).
+      const [{ data: taskRows, error }, { data: profileRows }] = await Promise.all([
+        supabase
+          .from("tasks")
+          .select(`
+            *,
+            clients(name, responsible_id),
+            plans(name),
+            subtasks(*),
+            task_checklist_items(*),
+            task_comments(*),
+            task_history(*)
+          `)
+          .order("created_at", { ascending: false }),
+        profileQuery,
+      ]);
+
+      if (error) throw error;
 
       const profileMap = new Map<string, { name: string; avatar: string | null }>();
       (profileRows || []).forEach((p: any) => profileMap.set(p.user_id, { name: p.full_name, avatar: p.avatar_url }));

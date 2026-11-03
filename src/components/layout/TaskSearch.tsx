@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -15,6 +15,14 @@ export function TaskSearch() {
   const [open, setOpen] = useState(false);
   const { results, search } = useTaskSearch();
   const navigate = useNavigate();
+
+  // Debounce: a busca vai ao Supabase (ilike); sem isso cada tecla dispara uma query.
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debouncedSearch = useCallback((term: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => search(term), 300);
+  }, [search]);
+  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current); }, []);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -42,7 +50,7 @@ export function TaskSearch() {
       </button>
 
       <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandInput placeholder="Buscar tarefas..." onValueChange={search} />
+        <CommandInput placeholder="Buscar tarefas..." onValueChange={debouncedSearch} />
         <CommandList>
           <CommandEmpty>Nenhuma tarefa encontrada.</CommandEmpty>
           <CommandGroup heading="Tarefas">
