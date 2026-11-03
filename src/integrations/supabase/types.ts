@@ -621,6 +621,38 @@ export type Database = {
           updated_at: string
           website: string | null
           zip_code: string | null
+          company_name: string | null
+          cnpj: string | null
+          contact_name: string | null
+          industry: string | null
+          business_description: string | null
+          products_services: string | null
+          time_in_market: string | null
+          company_size: string | null
+          monthly_revenue: string | null
+          main_niche: string | null
+          main_pains: string | null
+          desires: string | null
+          age_min: number | null
+          age_max: number | null
+          gender: string | null
+          location: string | null
+          social_class: string | null
+          brand_tone: string | null
+          primary_color: string | null
+          secondary_color: string | null
+          fonts: string | null
+          visual_elements: string | null
+          visual_personality: string | null
+          support_channels: string[] | null
+          crm_used: string | null
+          sla_response: string | null
+          business_hours_start: string | null
+          business_hours_end: string | null
+          working_days: string[] | null
+          additional_info: string | null
+          terms_accepted: boolean | null
+          import_batch_id: string | null
         }
         Insert: {
           address?: string | null
@@ -644,6 +676,38 @@ export type Database = {
           updated_at?: string
           website?: string | null
           zip_code?: string | null
+          company_name?: string | null
+          cnpj?: string | null
+          contact_name?: string | null
+          industry?: string | null
+          business_description?: string | null
+          products_services?: string | null
+          time_in_market?: string | null
+          company_size?: string | null
+          monthly_revenue?: string | null
+          main_niche?: string | null
+          main_pains?: string | null
+          desires?: string | null
+          age_min?: number | null
+          age_max?: number | null
+          gender?: string | null
+          location?: string | null
+          social_class?: string | null
+          brand_tone?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          fonts?: string | null
+          visual_elements?: string | null
+          visual_personality?: string | null
+          support_channels?: string[] | null
+          crm_used?: string | null
+          sla_response?: string | null
+          business_hours_start?: string | null
+          business_hours_end?: string | null
+          working_days?: string[] | null
+          additional_info?: string | null
+          terms_accepted?: boolean | null
+          import_batch_id?: string | null
         }
         Update: {
           address?: string | null
@@ -667,6 +731,38 @@ export type Database = {
           updated_at?: string
           website?: string | null
           zip_code?: string | null
+          company_name?: string | null
+          cnpj?: string | null
+          contact_name?: string | null
+          industry?: string | null
+          business_description?: string | null
+          products_services?: string | null
+          time_in_market?: string | null
+          company_size?: string | null
+          monthly_revenue?: string | null
+          main_niche?: string | null
+          main_pains?: string | null
+          desires?: string | null
+          age_min?: number | null
+          age_max?: number | null
+          gender?: string | null
+          location?: string | null
+          social_class?: string | null
+          brand_tone?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          fonts?: string | null
+          visual_elements?: string | null
+          visual_personality?: string | null
+          support_channels?: string[] | null
+          crm_used?: string | null
+          sla_response?: string | null
+          business_hours_start?: string | null
+          business_hours_end?: string | null
+          working_days?: string[] | null
+          additional_info?: string | null
+          terms_accepted?: boolean | null
+          import_batch_id?: string | null
         }
         Relationships: [
           {

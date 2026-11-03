@@ -98,8 +98,8 @@ export default function EditClient() {
     const data = rawClient as any;
     setClientStatus(data.status ?? "ativo");
     const loaded: FormData = {
-      company_name: data.company_name ?? "",
-      cnpj: data.cnpj ?? "",
+      company_name: data.company_name ?? data.name ?? "",
+      cnpj: data.cnpj ?? data.document ?? "",
       contact_name: data.contact_name ?? "",
       email: data.email ?? "",
       phone: data.phone ?? "",
@@ -254,6 +254,7 @@ export default function EditClient() {
     
     setSaving(true);
     const ok = await updateClient({
+      name: form.company_name, document: form.cnpj,
       company_name: form.company_name, cnpj: form.cnpj, contact_name: form.contact_name, email: form.email, phone: form.phone, website: sanitizedWebsite,
       industry: form.industry || null, business_description: form.business_description || null, products_services: form.products_services || null, time_in_market: form.time_in_market || null, company_size: form.company_size || null, monthly_revenue: form.monthly_revenue || null,
       main_niche: form.main_niche || null, main_pains: form.main_pains || null, desires: form.desires || null, age_min: form.age_min, age_max: form.age_max, gender: form.gender as any, location: form.location || null, social_class: form.social_class || null, brand_tone: form.brand_tone || null,

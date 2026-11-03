@@ -269,6 +269,8 @@ export function useImportData() {
 
         if (toCreate.length > 0) {
           const payloads = toCreate.map(([, client]) => attachOrganizationId({
+            name: client.name,
+            document: client.document || null,
             company_name: client.name,
             contact_name: client.name,
             email: client.email || null,
@@ -293,6 +295,8 @@ export function useImportData() {
             for (const [key, client] of toCreate) {
               const { data: single, error } = await (supabase.from("clients") as any)
                 .insert(attachOrganizationId({
+                  name: client.name,
+                  document: client.document || null,
                   company_name: client.name,
                   contact_name: client.name,
                   email: client.email || null,
