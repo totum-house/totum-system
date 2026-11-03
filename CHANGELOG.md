@@ -28,6 +28,7 @@
   - Busca global (Cmd+K): debounce de 300 ms antes do `ilike`
   - `useSupabaseTasks`: tarefas e perfis em `Promise.all` (poupa 1 RTT ≈ 0,4 s)
   - 18 dependências sem uso removidas (`package-lock` −580 linhas)
+  - B-041 — Tarefas: comentários e histórico saem da listagem e carregam por tarefa ao abrir o detalhe (`useTaskActivity`); drag no Kanban, mudança de status e exclusão atualizam só o estado local; edição recarrega 1 linha; conclusão só refaz a lista se criou tarefas novas. Comentário no diálogo passa a ser gravado em `task_comments`
 
 ### chore
 - Revisão 2026-11-03 (`chore/revisao-20261103`): remove diretivas `eslint-disable` sem efeito, `prefer-const` em `Products.tsx` e imports mortos em `NewClient`/`EditClient` — lint 498 → 495. Diagnóstico do cadastro de cliente quebrado registrado em `BUGS.md` B-038/B-039 (drift de schema; correção depende de decisão)
