@@ -67,7 +67,7 @@ export default function Packages() {
     setName(p.name);
     setDescription(p.description || "");
     setSelectedItems([]);
-    setTotalSale(Number(p.value) || 0);
+    setTotalSale(Number(p.price) || 0);
     setDialogOpen(true);
   };
 
@@ -123,7 +123,7 @@ export default function Packages() {
     const values = {
       name,
       description: description || null,
-      value: totalSale,
+      price: totalSale,
     };
 
     if (editing) {
@@ -191,11 +191,11 @@ export default function Packages() {
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Valor (Mensal):</span>
-                  <span className="font-bold text-primary">{formatCurrency(pkg.value)}</span>
+                  <span className="font-bold text-primary">{formatCurrency(pkg.price)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Frequência:</span>
-                  <span className="text-muted-foreground">{pkg.frequency}</span>
+                  <span className="text-muted-foreground">{pkg.billing_cycle || "mensal"}</span>
                 </div>
               </div>
 

@@ -105,7 +105,7 @@ export function ClientHubDeliveries({ clientId }: Props) {
                             <div key={item.id}>
                               <div className="flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-white/[0.03]">
                                 <Icon className={`h-4 w-4 shrink-0 ${info.color}`} />
-                                <span className="flex-1 text-sm">{item.name}</span>
+                                <span className="flex-1 text-sm">{item.title}</span>
                                 <div className="flex gap-0.5">
                                   {statusOptions.map(s => {
                                     const si = statusIcons[s];

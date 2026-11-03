@@ -18,9 +18,11 @@ export function useCompanySettings() {
     queryFn: async () => {
       if (isDemoMode) return demoCompanySettings;
 
+      // company_settings é a única tabela de configurações da empresa em produção
+      // (organization_settings não existe no schema totum_system — B-039).
       if (tenant?.organization_id && !tenant.fallback) {
         const { data, error } = await supabase
-          .from("organization_settings" as any)
+          .from("company_settings")
           .select("*")
           .eq("organization_id", tenant.organization_id)
           .maybeSingle();
@@ -33,6 +35,7 @@ export function useCompanySettings() {
       const { data, error } = await supabase
         .from("company_settings")
         .select("*")
+        .limit(1)
         .maybeSingle();
 
       if (error) throw error;
@@ -52,18 +55,23 @@ export function useUpdateCompanySettings() {
     mutationFn: async (updates: Record<string, any>) => {
       if (isDemoMode) { toast(DEMO_TOAST); return; }
 
-      if (tenant?.organization_id && !tenant.fallback) {
-        const payload = {
-          organization_id: tenant.organization_id,
-          name: updates.name || "",
-          email: updates.email || null,
-          phone: updates.phone || null,
-          address: updates.address || null,
-        };
+      const payload = {
+        name: updates.name || "",
+        email: updates.email || null,
+        phone: updates.phone || null,
+        address: updates.address || null,
+      };
 
-        const { error } = await supabase
-          .from("organization_settings" as any)
-          .upsert(payload, { onConflict: "organization_id" });
+      if (tenant?.organization_id && !tenant.fallback) {
+        const { data: existing } = await supabase
+          .from("company_settings")
+          .select("id")
+          .eq("organization_id", tenant.organization_id)
+          .maybeSingle();
+
+        const { error } = existing
+          ? await supabase.from("company_settings").update(payload).eq("id", existing.id)
+          : await supabase.from("company_settings").insert({ ...payload, organization_id: tenant.organization_id });
 
         if (error) throw error;
 
@@ -72,7 +80,7 @@ export function useUpdateCompanySettings() {
 
       const { data: existing } = await supabase.from("company_settings").select("id").limit(1).maybeSingle();
       if (!existing) throw new Error("Configurações não encontradas");
-      const { error } = await supabase.from("company_settings").update(updates as any).eq("id", existing.id);
+      const { error } = await supabase.from("company_settings").update(payload).eq("id", existing.id);
       if (error) throw error;
     },
     onSuccess: () => {

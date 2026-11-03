@@ -31,18 +31,19 @@ export function useContractFormData(open: boolean): ContractFormData {
     setLoading(true);
     Promise.all([
       supabase.from("clients").select("*"),
-      supabase.from("plans").select("id, name, value, frequency").eq("is_active", true).order("name"),
+      // plans em produção tem price/billing_cycle (baseline); o form continua lendo value/frequency
+      supabase.from("plans").select("id, name, price, billing_cycle").eq("is_active", true).order("name"),
       supabase.from("contract_types").select("id, name").eq("is_active", true).order("name"),
-      supabase.from("plans").select("id, name, value, frequency").eq("is_active", true).order("name"),
+      supabase.from("plans").select("id, name, price, billing_cycle").eq("is_active", true).order("name"),
       supabase.from("products").select("id, name, price, product_types(name)").eq("is_active", true).order("name"),
     ]).then(([c, p, ct, pkg, pr]) => {
       const activeClients = ((c.data as any[]) || [])
         .filter((client) => ["ativo", "active"].includes((client.status || "").toLowerCase()))
         .sort((a: any, b: any) => getClientDisplayName(a).localeCompare(getClientDisplayName(b), "pt-BR"));
       setClients(activeClients);
-      setPlans((p.data as any) || []);
+      setPlans((p.data || []).map((plan) => ({ id: plan.id, name: plan.name, value: plan.price, frequency: plan.billing_cycle })));
       setContractTypes(ct.data || []);
-      setPackages(((pkg.data as any[]) || []).map((p) => ({ id: p.id, name: p.name, total_sale: p.value })));
+      setPackages((pkg.data || []).map((p) => ({ id: p.id, name: p.name, total_sale: p.price })));
       setProducts((pr.data as any) || []);
       setLoading(false);
     });

@@ -113,6 +113,10 @@ export type Database = {
       }
       asaas_config: {
         Row: {
+          sync_clients: boolean
+          sync_payments: boolean
+          auto_create_financial: boolean
+          default_billing_type: string
           api_key: string | null
           created_at: string
           environment: string
@@ -123,6 +127,10 @@ export type Database = {
           webhook_token: string | null
         }
         Insert: {
+          sync_clients?: boolean
+          sync_payments?: boolean
+          auto_create_financial?: boolean
+          default_billing_type?: string
           api_key?: string | null
           created_at?: string
           environment?: string
@@ -133,6 +141,10 @@ export type Database = {
           webhook_token?: string | null
         }
         Update: {
+          sync_clients?: boolean
+          sync_payments?: boolean
+          auto_create_financial?: boolean
+          default_billing_type?: string
           api_key?: string | null
           created_at?: string
           environment?: string
@@ -154,6 +166,9 @@ export type Database = {
       }
       asaas_customers: {
         Row: {
+          sync_status: string | null
+          synced_at: string | null
+          error_message: string | null
           asaas_id: string
           client_id: string | null
           cpf_cnpj: string | null
@@ -165,6 +180,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          sync_status?: string | null
+          synced_at?: string | null
+          error_message?: string | null
           asaas_id: string
           client_id?: string | null
           cpf_cnpj?: string | null
@@ -176,6 +194,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          sync_status?: string | null
+          synced_at?: string | null
+          error_message?: string | null
           asaas_id?: string
           client_id?: string | null
           cpf_cnpj?: string | null
@@ -205,6 +226,19 @@ export type Database = {
       }
       asaas_payments: {
         Row: {
+          asaas_payment_id: string
+          client_id: string | null
+          contract_id: string | null
+          financial_entry_id: string | null
+          asaas_subscription_id: string | null
+          pix_qr_code: string | null
+          pix_qr_code_url: string | null
+          installment_count: number | null
+          installment_value: number | null
+          discount_value: number | null
+          discount_type: string | null
+          interest_value: number | null
+          fine_value: number | null
           asaas_customer_id: string | null
           asaas_id: string
           bank_slip_url: string | null
@@ -223,6 +257,18 @@ export type Database = {
           value: number
         }
         Insert: {
+          client_id?: string | null
+          contract_id?: string | null
+          financial_entry_id?: string | null
+          asaas_subscription_id?: string | null
+          pix_qr_code?: string | null
+          pix_qr_code_url?: string | null
+          installment_count?: number | null
+          installment_value?: number | null
+          discount_value?: number | null
+          discount_type?: string | null
+          interest_value?: number | null
+          fine_value?: number | null
           asaas_customer_id?: string | null
           asaas_id: string
           bank_slip_url?: string | null
@@ -241,6 +287,18 @@ export type Database = {
           value?: number
         }
         Update: {
+          client_id?: string | null
+          contract_id?: string | null
+          financial_entry_id?: string | null
+          asaas_subscription_id?: string | null
+          pix_qr_code?: string | null
+          pix_qr_code_url?: string | null
+          installment_count?: number | null
+          installment_value?: number | null
+          discount_value?: number | null
+          discount_type?: string | null
+          interest_value?: number | null
+          fine_value?: number | null
           asaas_customer_id?: string | null
           asaas_id?: string
           bank_slip_url?: string | null
@@ -259,6 +317,27 @@ export type Database = {
           value?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "asaas_payments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asaas_payments_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asaas_payments_financial_entry_id_fkey"
+            columns: ["financial_entry_id"]
+            isOneToOne: false
+            referencedRelation: "financial_entries"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "asaas_payments_asaas_customer_id_fkey"
             columns: ["asaas_customer_id"]
@@ -277,6 +356,16 @@ export type Database = {
       }
       asaas_subscriptions: {
         Row: {
+          asaas_subscription_id: string
+          client_id: string | null
+          end_date: string | null
+          max_payments: number | null
+          description: string | null
+          external_reference: string | null
+          discount_value: number | null
+          discount_type: string | null
+          interest_value: number | null
+          fine_value: number | null
           asaas_customer_id: string | null
           asaas_id: string
           billing_type: string | null
@@ -291,6 +380,15 @@ export type Database = {
           value: number
         }
         Insert: {
+          client_id?: string | null
+          end_date?: string | null
+          max_payments?: number | null
+          description?: string | null
+          external_reference?: string | null
+          discount_value?: number | null
+          discount_type?: string | null
+          interest_value?: number | null
+          fine_value?: number | null
           asaas_customer_id?: string | null
           asaas_id: string
           billing_type?: string | null
@@ -305,6 +403,15 @@ export type Database = {
           value?: number
         }
         Update: {
+          client_id?: string | null
+          end_date?: string | null
+          max_payments?: number | null
+          description?: string | null
+          external_reference?: string | null
+          discount_value?: number | null
+          discount_type?: string | null
+          interest_value?: number | null
+          fine_value?: number | null
           asaas_customer_id?: string | null
           asaas_id?: string
           billing_type?: string | null
@@ -319,6 +426,13 @@ export type Database = {
           value?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "asaas_subscriptions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "asaas_subscriptions_asaas_customer_id_fkey"
             columns: ["asaas_customer_id"]
@@ -924,6 +1038,9 @@ export type Database = {
       }
       contracts: {
         Row: {
+          title: string | null
+          billing_frequency: Database["public"]["Enums"]["checklist_frequency"] | null
+          package_id: string | null
           billing_day: number | null
           cancellation_reason_id: string | null
           client_id: string
@@ -941,6 +1058,9 @@ export type Database = {
           value: number | null
         }
         Insert: {
+          title?: string | null
+          billing_frequency?: Database["public"]["Enums"]["checklist_frequency"] | null
+          package_id?: string | null
           billing_day?: number | null
           cancellation_reason_id?: string | null
           client_id: string
@@ -958,6 +1078,9 @@ export type Database = {
           value?: number | null
         }
         Update: {
+          title?: string | null
+          billing_frequency?: Database["public"]["Enums"]["checklist_frequency"] | null
+          package_id?: string | null
           billing_day?: number | null
           cancellation_reason_id?: string | null
           client_id?: string
@@ -1090,6 +1213,8 @@ export type Database = {
       }
       delivery_checklist_items: {
         Row: {
+          responsible_id: string | null
+          completed_at: string | null
           checklist_id: string
           created_at: string
           delivery_model_item_id: string | null
@@ -1104,6 +1229,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          responsible_id?: string | null
+          completed_at?: string | null
           checklist_id: string
           created_at?: string
           delivery_model_item_id?: string | null
@@ -1118,6 +1245,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          responsible_id?: string | null
+          completed_at?: string | null
           checklist_id?: string
           created_at?: string
           delivery_model_item_id?: string | null
@@ -1250,6 +1379,11 @@ export type Database = {
       }
       delivery_model_items: {
         Row: {
+          plan_id: string | null
+          sort_order: number
+          task_type: Database["public"]["Enums"]["task_type"]
+          suggested_priority: Database["public"]["Enums"]["task_priority"]
+          suggested_responsible_id: string | null
           created_at: string
           description: string | null
           frequency: Database["public"]["Enums"]["checklist_frequency"] | null
@@ -1258,6 +1392,11 @@ export type Database = {
           name: string
         }
         Insert: {
+          plan_id?: string | null
+          sort_order?: number
+          task_type?: Database["public"]["Enums"]["task_type"]
+          suggested_priority?: Database["public"]["Enums"]["task_priority"]
+          suggested_responsible_id?: string | null
           created_at?: string
           description?: string | null
           frequency?: Database["public"]["Enums"]["checklist_frequency"] | null
@@ -1266,6 +1405,11 @@ export type Database = {
           name: string
         }
         Update: {
+          plan_id?: string | null
+          sort_order?: number
+          task_type?: Database["public"]["Enums"]["task_type"]
+          suggested_priority?: Database["public"]["Enums"]["task_priority"]
+          suggested_responsible_id?: string | null
           created_at?: string
           description?: string | null
           frequency?: Database["public"]["Enums"]["checklist_frequency"] | null
@@ -1273,7 +1417,15 @@ export type Database = {
           is_active?: boolean
           name?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "delivery_model_items_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       departments: {
         Row: {
@@ -1477,6 +1629,11 @@ export type Database = {
       }
       financial_entries: {
         Row: {
+          entry_class: string | null
+          nature: string | null
+          installment_number: number | null
+          total_installments: number | null
+          created_by: string | null
           bank_account_id: string | null
           category_id: string | null
           client_id: string | null
@@ -1498,6 +1655,11 @@ export type Database = {
           value: number
         }
         Insert: {
+          entry_class?: string | null
+          nature?: string | null
+          installment_number?: number | null
+          total_installments?: number | null
+          created_by?: string | null
           bank_account_id?: string | null
           category_id?: string | null
           client_id?: string | null
@@ -1519,6 +1681,11 @@ export type Database = {
           value?: number
         }
         Update: {
+          entry_class?: string | null
+          nature?: string | null
+          installment_number?: number | null
+          total_installments?: number | null
+          created_by?: string | null
           bank_account_id?: string | null
           category_id?: string | null
           client_id?: string | null

@@ -81,6 +81,7 @@ export function useContracts() {
             client_id: prevContract?.client_id as string,
             contract_id: id,
             plan_id: planId,
+            title: new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(new Date()),
             period: new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(new Date()),
             frequency: prevContract?.billing_frequency || 'mensal',
             fulfillment_pct: 0,
@@ -90,11 +91,11 @@ export function useContracts() {
           if (checklist) {
             const itemsToInsert = modelItems.map((it, idx) => ({
               checklist_id: checklist.id,
-              name: it.name,
+              title: it.name,
               delivery_model_item_id: it.id,
               // status: null is valid — "pendente" is not in the enum
-              sort_order: (it as any).sort_order ?? idx,
-              responsible_id: (it as any).suggested_responsible_id ?? null,
+              sort_order: it.sort_order ?? idx,
+              responsible_id: it.suggested_responsible_id ?? null,
             }));
             await supabase.from("delivery_checklist_items").insert(itemsToInsert);
             toast({ title: "🚀 Entregas geradas", description: `${modelItems.length} itens adicionados ao checklist.` });
