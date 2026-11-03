@@ -12,7 +12,6 @@ function useDebouncedCallback<T extends (...args: any[]) => any>(fn: T, delay = 
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => fn(...args), delay);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [fn, delay]
   );
 }

@@ -18,7 +18,7 @@ import {
   Building2, Briefcase, Target, Palette, Settings2,
   ChevronLeft, ChevronRight, Check, Loader2, User, FileClock,
 } from "lucide-react";
-import { validateClientBasicInfo, isValidEmail, isValidPhone, isValidURL, sanitizeURL, type ValidationErrors } from "@/lib/validation";
+import { validateClientBasicInfo, sanitizeURL, type ValidationErrors } from "@/lib/validation";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
