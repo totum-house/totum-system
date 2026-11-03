@@ -19,6 +19,7 @@
 - Aviso de alterações não salvas: novo hook `useUnsavedChangesGuard` + `UnsavedChangesDialog` reutilizados em `NewClient`, `EditClient`, `TaskFormDialog` e `TaskDetailDialog` — bloqueia fechamento acidental (Dialog/Sheet) e refresh/fechamento de aba (`beforeunload`) quando há dados não salvos
 
 ### chore
+- Revisão 2026-11-03 (`chore/revisao-20261103`): remove diretivas `eslint-disable` sem efeito, `prefer-const` em `Products.tsx` e imports mortos em `NewClient`/`EditClient` — lint 498 → 495. Diagnóstico do cadastro de cliente quebrado registrado em `BUGS.md` B-038/B-039 (drift de schema; correção depende de decisão)
 - Untrack `src/stark-api/node_modules/` e `dist/` do git (2215 arquivos, ~65MB) — `948c250c`
 - Remover 23 arquivos duplicados `* 2.*` byte-identical (artefatos do Finder macOS) — `bd676aeb`
 

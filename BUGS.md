@@ -1,5 +1,5 @@
 # BUGS.md — Totum System
-> Vibe Coding Totum v3.0 · Atualizado: 2026-08-10
+> Vibe Coding Totum v3.0 · Atualizado: 2026-11-03
 
 ## 🔴 CRÍTICOS (resolver antes de qualquer release)
 
@@ -18,6 +18,13 @@
 | B-024 | ✅ RESOLVIDO | Supabase RLS | Policies de filhos de tarefas/checklists e storage `task-attachments` tinham inserts amplos para `authenticated` | Hotfix remoto `20260513_remote_task_child_rls_hotfix.sql` |
 | B-026 | ✅ RESOLVIDO | `src/pages/NewClient.tsx`, `src/pages/EditClient.tsx` | Cadastro/edição de cliente quebrava com `Could not find the 'additional_info' column of 'clients' in the schema cache` — coluna nunca existiu no banco | `supabase/patches/20260804_add_clients_additional_info.sql` |
 | B-027 | ✅ RESOLVIDO | `src/pages/Tasks.tsx` | `handleTaskUpdate` não incluía `title`/`responsible_id` no payload de `updateTask` — editar título ou responsável na `TaskDetailDialog` não persistia no Supabase | Ver CHANGELOG [Unreleased] |
+
+## 🔴 CRÍTICOS — drift de schema entre o código e o banco self-hosted (revisão 2026-11-03)
+
+| # | Status | Arquivo | Problema | Prioridade |
+|---|---|---|---|---|
+| B-038 | 🔴 ABERTO | `src/pages/NewClient.tsx`, `src/pages/EditClient.tsx`, `src/hooks/useImportData.ts` | **Ninguém consegue cadastrar/editar/importar cliente.** O formulário envia ~30 colunas (`company_name`, `cnpj`, `contact_name`, `user_id`, `industry`, …, `terms_accepted`) que não existem em `totum_system.clients` no banco de produção (`supa.grupototum.com`), e não envia `name` (NOT NULL). A tabela real tem só as colunas da baseline (`name`, `document`, `segment`, `notes`…). Confirmado por GET no PostgREST: `column clients.company_name does not exist` (42703). O patch de B-026 (`additional_info`) também nunca foi aplicado nesse banco. `QuickAddDialog` funciona porque envia só `name` | Crítica |
+| B-039 | 🔴 ABERTO | 9 pontos de query (ver lista) | Mesmo drift em outras telas — selects que o PostgREST de produção rejeita: `asaas_customers.asaas_customer_id` (`asaasService.ts`); relação `asaas_payments`/`asaas_subscriptions` → `clients` (`useAsaas.ts`); `contracts.billing_frequency` (`checklistService.ts`); `contracts.title` (`useProjectFormData.ts`); `financial_entries.entry_class` (`useReports.ts`); tabela `organization_settings` (`useAdminSettings.ts`); relação `plans` → `delivery_model_items` (`usePackages.ts`); `plans.value`/`frequency` (`useContractFormData.ts`); `delivery_model_items.sort_order`/`suggested_responsible_id` (`checklistService.ts`, também erro de `tsc`). Método: `.from().select()` do código testados por GET contra o schema real | Alta |
 
 ## 🔴 CRÍTICOS — achados da auditoria de permissões (2026-08-10, ver `docs/PERMISSION_MATRIX.md`)
 
