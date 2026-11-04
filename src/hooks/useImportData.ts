@@ -280,7 +280,7 @@ export function useImportData() {
             phone: client.phone || null,
             cnpj: client.document || null,
             import_batch_id: batch.id,
-            status: "active",
+            status: "ativo",
           }, tenant?.organization_id));
 
           // Tenta em lote primeiro; se falhar (ex: violação de constraint em uma
@@ -306,7 +306,7 @@ export function useImportData() {
                   phone: client.phone || null,
                   cnpj: client.document || null,
                   import_batch_id: batch.id,
-                  status: "active",
+                  status: "ativo",
                 }, tenant?.organization_id))
                 .select("id")
                 .single();

@@ -147,7 +147,7 @@ export function useSupabaseTasks() {
   const fetchClients = useCallback(async () => {
     if (isDemoMode) return;
     try {
-      let q = supabase.from("clients").select("id, name").eq("status", "ativo").order("name");
+      let q = supabase.from("clients").select("id, name").in("status", ["ativo", "active"]).order("name");
       if (tenant?.organization_id) {
         q = q.eq("organization_id", tenant.organization_id);
       }
