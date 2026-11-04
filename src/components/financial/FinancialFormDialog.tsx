@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import type { TablesInsert } from "@/integrations/supabase/types";
 import { useFinancialFormLookups, useClientContractsByClientId, useCreateFinancialEntry } from "@/hooks/useFinancialFormLookups";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
@@ -68,7 +69,7 @@ export function FinancialFormDialog({ open, onOpenChange, onCreated }: Props) {
       const dbType = entryClass === "receita" ? "receber" : "pagar";
       const intervalMonths = Math.max(1, parseInt(interval) || 1);
       const { data: { user } } = await supabase.auth.getUser();
-      const entries = [];
+      const entries: TablesInsert<"financial_entries">[] = [];
 
       for (let i = 0; i < numInstallments; i++) {
         const date = addMonths(parseISO(dueDate), i * intervalMonths);
