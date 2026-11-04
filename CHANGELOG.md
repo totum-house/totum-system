@@ -6,6 +6,7 @@
 ## [Unreleased]
 
 ### fix
+- B-044 — Subtarefas e itens de checklist adicionados/alterados/removidos no diálogo de detalhe da tarefa passam a ser gravados (`subtasks`/`task_checklist_items`); antes só existiam em memória até fechar o diálogo — `useSupabaseTasks.syncTaskChildren`
 - Cadastro/edição/importação de cliente (B-038): tabela `clients` em produção só tinha as colunas da baseline. Patch aditivo `supabase/patches/20261103_add_clients_briefing_columns.sql` cria as colunas do briefing (aplicar manualmente); `NewClient`/`EditClient`/`useImportData` passam a enviar também `name` (NOT NULL) e `document`, e `EditClient` cai para `name`/`document` ao carregar; `user_id` (coluna inexistente) removido do payload; `types.ts` atualizado
 - Corrigir erro `Could not find the 'additional_info' column of 'clients' in the schema cache` no cadastro/edição de cliente — coluna criada via `supabase/patches/20260804_add_clients_additional_info.sql` (o campo já era usado no formulário, mas nunca existiu no banco)
 - `TaskDetailDialog`: título e responsável da tarefa deixavam de ser persistidos ao salvar (payload de `updateTask` não incluía `title`/`responsible_id`) — corrigido em `src/pages/Tasks.tsx`

@@ -248,6 +248,10 @@ export default function Tasks() {
       recurrence_type: updatedTask.recurrenceType || null,
       recurrence_config: (updatedTask.recurrenceConfig as any) || null,
       recurrence_end_date: updatedTask.recurrenceEndDate || null,
+    }, {
+      // Subtarefas e checklist editadas no diálogo passam a ser persistidas (B-044)
+      subtasks: updatedTask.subtasks,
+      checklist: updatedTask.checklist,
     });
   };
 

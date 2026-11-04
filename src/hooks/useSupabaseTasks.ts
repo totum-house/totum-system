@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import type { Tables, Enums } from "@/integrations/supabase/types";
-import { Task, TaskStatus, RecurrenceType, RecurrenceConfig } from "@/components/tasks/taskData";
+import { Task, TaskStatus, RecurrenceType, RecurrenceConfig, Subtask, ChecklistItem } from "@/components/tasks/taskData";
 import { useDemo } from "@/contexts/DemoContext";
 import { useTenant } from "@/contexts/TenantContext";
 import { attachOrganizationId } from "@/lib/tenant";
@@ -248,7 +248,63 @@ export function useSupabaseTasks() {
       : prev.filter(t => t.id !== taskId));
   };
 
-  const updateTask = async (taskId: string, updates: Partial<TaskRow>) => {
+  // Persiste subtarefas e checklist editadas no diálogo de detalhe (B-044):
+  // upsert de tudo que está na lista nova (idempotente — só as colunas enviadas
+  // são sobrescritas) e delete do que saiu. Os ids vêm do cliente
+  // (crypto.randomUUID) ou do banco, então servem de chave nos dois casos.
+  const syncTaskChildren = async (
+    taskId: string,
+    children: { subtasks?: Subtask[]; checklist?: ChecklistItem[] },
+  ) => {
+    const current = tasks.find((t) => t.id === taskId);
+    const errors: string[] = [];
+
+    if (children.subtasks && JSON.stringify(children.subtasks) !== JSON.stringify(current?.subtasks ?? [])) {
+      const nextIds = new Set(children.subtasks.map((s) => s.id));
+      const removed = (current?.subtasks ?? []).filter((s) => !nextIds.has(s.id)).map((s) => s.id);
+      const [{ error: upErr }, { error: delErr }] = await Promise.all([
+        children.subtasks.length > 0
+          ? supabase.from("subtasks").upsert(children.subtasks.map((st, i) => ({
+              id: st.id, task_id: taskId, title: st.title, status: st.status as Enums<"task_status">, sort_order: i,
+            })))
+          : Promise.resolve({ error: null }),
+        removed.length > 0
+          ? supabase.from("subtasks").delete().in("id", removed)
+          : Promise.resolve({ error: null }),
+      ]);
+      if (upErr) errors.push(upErr.message);
+      if (delErr) errors.push(delErr.message);
+    }
+
+    if (children.checklist && JSON.stringify(children.checklist) !== JSON.stringify(current?.checklist ?? [])) {
+      const nextIds = new Set(children.checklist.map((c) => c.id));
+      const removed = (current?.checklist ?? []).filter((c) => !nextIds.has(c.id)).map((c) => c.id);
+      const [{ error: upErr }, { error: delErr }] = await Promise.all([
+        children.checklist.length > 0
+          ? supabase.from("task_checklist_items").upsert(children.checklist.map((ci, i) => ({
+              id: ci.id, task_id: taskId, text: ci.text, completed: ci.completed, sort_order: i,
+            })))
+          : Promise.resolve({ error: null }),
+        removed.length > 0
+          ? supabase.from("task_checklist_items").delete().in("id", removed)
+          : Promise.resolve({ error: null }),
+      ]);
+      if (upErr) errors.push(upErr.message);
+      if (delErr) errors.push(delErr.message);
+    }
+
+    if (errors.length > 0) {
+      toast({ title: "Erro ao salvar subtarefas/checklist", description: errors[0], variant: "destructive" });
+      return false;
+    }
+    return true;
+  };
+
+  const updateTask = async (
+    taskId: string,
+    updates: Partial<TaskRow>,
+    children?: { subtasks?: Subtask[]; checklist?: ChecklistItem[] },
+  ) => {
     if (isDemoMode) {
       toast({ title: "Modo Demo", description: "Ação simulada com sucesso." });
       return true;
@@ -263,8 +319,11 @@ export function useSupabaseTasks() {
       return false;
     }
 
+    let childrenOk = true;
+    if (children) childrenOk = await syncTaskChildren(taskId, children);
+
     await refreshTask(taskId);
-    return true;
+    return childrenOk;
   };
 
   const addTasks = async (newTasks: Array<{
