@@ -83,14 +83,69 @@ export function useClients() {
     if (isDemoMode) { toast({ title: "Modo Demo", description: "Ação simulada com sucesso." }); return true; }
     const { error } = await supabase.from("clients").delete().eq("id", id);
     if (error) {
+      // FKs de contracts/financial_entries/tasks/projects/task_goals não têm cascata (de propósito):
+      // a tela deve ter oferecido "Desativar"; aqui é só o último recurso.
+      const blocked = /foreign key constraint/i.test(error.message);
+      toast({
+        title: blocked ? "Cliente possui vínculos" : "Erro",
+        description: blocked
+          ? "Este cliente tem contratos, tarefas ou lançamentos ligados a ele e não pode ser excluído. Desative o cliente para ocultá-lo das listagens."
+          : error.message,
+        variant: "destructive",
+      });
+      return false;
+    }
+    await fetch();
+    toast({ title: "Cliente excluído" });
+    return true;
+  };
+
+  /** Soft delete: o cliente some das listagens, mas contratos, tarefas e financeiro ficam íntegros. */
+  const deactivateClient = async (id: string) => {
+    if (isDemoMode) { toast({ title: "Modo Demo", description: "Ação simulada com sucesso." }); return true; }
+    const { error } = await supabase
+      .from("clients")
+      .update({ status: "inativo", updated_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
       return false;
     }
     await fetch();
+    toast({ title: "Cliente desativado", description: "O cliente foi ocultado das listagens." });
     return true;
   };
 
-  return { clients, loading, refetch: fetch, addClient, updateClient, deleteClient };
+  return { clients, loading, refetch: fetch, addClient, updateClient, deleteClient, deactivateClient };
+}
+
+export interface ClientLinks {
+  contratos: number;
+  lancamentos: number;
+  tarefas: number;
+  projetos: number;
+  metas: number;
+  total: number;
+}
+
+/**
+ * Conta os registros que apontam para o cliente em tabelas cuja FK bloqueia o DELETE
+ * (contracts, financial_entries, tasks, projects, task_goals). Usado pela tela de
+ * clientes para explicar por que a exclusão não é possível e oferecer "Desativar".
+ */
+export async function countClientLinks(clientId: string): Promise<ClientLinks> {
+  const count = async (table: "contracts" | "financial_entries" | "tasks" | "projects" | "task_goals") => {
+    const { count: n, error } = await supabase
+      .from(table)
+      .select("id", { count: "exact", head: true })
+      .eq("client_id", clientId);
+    if (error) throw error;
+    return n ?? 0;
+  };
+  const [contratos, lancamentos, tarefas, projetos, metas] = await Promise.all([
+    count("contracts"), count("financial_entries"), count("tasks"), count("projects"), count("task_goals"),
+  ]);
+  return { contratos, lancamentos, tarefas, projetos, metas, total: contratos + lancamentos + tarefas + projetos + metas };
 }
 
 export function useClientById(clientId: string | undefined) {
