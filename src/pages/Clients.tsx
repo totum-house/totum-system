@@ -8,7 +8,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useClients, ClientRow } from "@/hooks/useClients";
+import { useClients, countClientLinks, ClientRow, ClientLinks } from "@/hooks/useClients";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useProfiles } from "@/hooks/useProfiles";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -33,7 +37,40 @@ const PAGE_SIZE = 25;
 
 export default function Clients() {
   const navigate = useNavigate();
-  const { clients, loading, deleteClient } = useClients();
+  const { clients, loading, deleteClient, deactivateClient } = useClients();
+  // Diálogo de exclusão: conta vínculos antes de apagar; com vínculos, oferece "Desativar"
+  const [deleteTarget, setDeleteTarget] = useState<ClientRow | null>(null);
+  const [deleteLinks, setDeleteLinks] = useState<ClientLinks | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+
+  const openDelete = async (client: ClientRow) => {
+    setDeleteTarget(client);
+    setDeleteLinks(null);
+    try {
+      setDeleteLinks(await countClientLinks(client.id));
+    } catch {
+      // Sem contagem, deixa o banco decidir (deleteClient já traduz o erro de FK)
+      setDeleteLinks({ contratos: 0, lancamentos: 0, tarefas: 0, projetos: 0, metas: 0, total: 0 });
+    }
+  };
+
+  const closeDelete = () => { setDeleteTarget(null); setDeleteLinks(null); };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteBusy(true);
+    const ok = await deleteClient(deleteTarget.id);
+    setDeleteBusy(false);
+    if (ok) closeDelete();
+  };
+
+  const confirmDeactivate = async () => {
+    if (!deleteTarget) return;
+    setDeleteBusy(true);
+    const ok = await deactivateClient(deleteTarget.id);
+    setDeleteBusy(false);
+    if (ok) closeDelete();
+  };
   const { profiles } = useProfiles();
   const { maskDocument } = usePermissions();
   const [search, setSearch] = useState("");
@@ -219,7 +256,7 @@ export default function Clients() {
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-destructive"
-                              onClick={() => { if (confirm(`Excluir "${displayName}"?`)) deleteClient(client.id); }}
+                              onClick={() => openDelete(client)}
                             >
                               <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
                             </DropdownMenuItem>
@@ -282,7 +319,7 @@ export default function Clients() {
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-destructive"
-                        onClick={() => { if (confirm(`Excluir "${displayName}"?`)) deleteClient(client.id); }}
+                        onClick={() => openDelete(client)}
                       >
                         <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
                       </DropdownMenuItem>
@@ -339,6 +376,65 @@ export default function Clients() {
         <PaginationControls page={page} pageSize={PAGE_SIZE} totalCount={filtered.length} onPageChange={setPage} />
         </>
       )}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open && !deleteBusy) closeDelete(); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {deleteLinks && deleteLinks.total > 0 ? "Este cliente possui vínculos" : "Excluir cliente?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                {!deleteLinks && <p>Verificando contratos, tarefas e lançamentos…</p>}
+                {deleteLinks && deleteLinks.total === 0 && (
+                  <p>
+                    <span className="font-medium text-foreground">{deleteTarget ? getClientDisplayName(deleteTarget) : ""}</span>{" "}
+                    será excluído permanentemente. Esta ação não pode ser desfeita.
+                  </p>
+                )}
+                {deleteLinks && deleteLinks.total > 0 && (
+                  <>
+                    <p>
+                      <span className="font-medium text-foreground">{deleteTarget ? getClientDisplayName(deleteTarget) : ""}</span>{" "}
+                      não pode ser excluído porque outros registros dependem dele:
+                    </p>
+                    <ul className="list-disc pl-5">
+                      {deleteLinks.contratos > 0 && <li>{deleteLinks.contratos} contrato(s)</li>}
+                      {deleteLinks.lancamentos > 0 && <li>{deleteLinks.lancamentos} lançamento(s) financeiro(s)</li>}
+                      {deleteLinks.tarefas > 0 && <li>{deleteLinks.tarefas} tarefa(s)</li>}
+                      {deleteLinks.projetos > 0 && <li>{deleteLinks.projetos} projeto(s)</li>}
+                      {deleteLinks.metas > 0 && <li>{deleteLinks.metas} meta(s)</li>}
+                    </ul>
+                    <p>
+                      Desative o cliente: ele some das listagens e o histórico fica preservado.
+                      Para excluir de vez, remova antes os vínculos acima.
+                    </p>
+                  </>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteBusy}>Cancelar</AlertDialogCancel>
+            {deleteLinks && deleteLinks.total === 0 && (
+              <AlertDialogAction
+                onClick={(e) => { e.preventDefault(); confirmDelete(); }}
+                disabled={deleteBusy}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Excluir
+              </AlertDialogAction>
+            )}
+            {deleteLinks && deleteLinks.total > 0 && (
+              <AlertDialogAction
+                onClick={(e) => { e.preventDefault(); confirmDeactivate(); }}
+                disabled={deleteBusy}
+              >
+                Desativar cliente
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
